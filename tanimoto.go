@@ -8,6 +8,7 @@ import (
 	"container/heap"
 	"github.com/pilosa/pilosa"
 	"math"
+	"github.com/pilosa/pilosa/pql"
 )
 
 // Tanimoto represents a plugin that will find the common bits of the top-n list.
@@ -16,15 +17,16 @@ type TanimotoPlugin struct {
 }
 
 // NewDiffTopPlugin returns a new instance of DiffTopPlugin.
-func NewTanimotoPlugin(h *pilosa.Holder) pilosa.Plugin {
-	return &TanimotoPlugin{h}
+func NewTanimotoPlugin(h *pilosa.Executor) pilosa.Plugin {
+	return &TanimotoPlugin{h.Holder}
 }
 
 // Map executes the plugin against a single slice.
-func (p *TanimotoPlugin) Map(ctx context.Context, index string, children []interface{}, args map[string]interface{}, slice uint64) (interface{}, error) {
+func (p *TanimotoPlugin) Map(ctx context.Context, index string, call *pql.Call, slice uint64) (interface{}, error) {
 
 	var frame string
 	var threshold uint64
+	args := call.Args
 	if fr, found := args["frame"]; found {
 		frame = fr.(string)
 	} else {
@@ -40,13 +42,12 @@ func (p *TanimotoPlugin) Map(ctx context.Context, index string, children []inter
 		return nil, errors.New("threshold required")
 	}
 
-	bm := children[0].(*pilosa.Bitmap)
+	var bm *pilosa.Bitmap
 
 	frag := p.holder.Fragment(index, frame, pilosa.ViewStandard, slice)
 	opt := pilosa.TopOptions{TanimotoThreshold: threshold, Src: bm}
 
 	pairs := frag.Cache().Top()
-	//fmt.Printf("%+v\n", frag.Cache())
 	var tanimotoThreshold uint64
 	var minTanimoto, maxTanimoto float64
 	var srcCount uint64
