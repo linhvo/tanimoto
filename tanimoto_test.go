@@ -11,6 +11,10 @@ import (
 	"strings"
 	"testing"
 )
+//
+//func init() {
+//	pilosa.RegisterPlugin("Tanimoto", NewTanimotoPlugin)
+//}
 
 type Fragment struct {
 	*pilosa.Fragment
@@ -125,6 +129,7 @@ func MustParse(s string) *pql.Query {
 }
 
 func TestExecutor_Execute_Tanimoto(t *testing.T) {
+	pilosa.RegisterPlugin("Tanimoto", NewTanimotoPlugin)
 	hldr := MustOpenHolder()
 	defer hldr.Close()
 
@@ -138,7 +143,6 @@ func TestExecutor_Execute_Tanimoto(t *testing.T) {
 	e := NewExecutor(hldr.Holder, NewCluster(1))
 
 	res, err := e.Execute(context.Background(), "i", MustParse(`Tanimoto(Bitmap(rowID=102, frame=f), frame=f, threshold=50)`), nil, nil)
-
 	if err != nil {
 		t.Fatal(err)
 	} else if res[0].([]pilosa.Pair)[0].ID != 102 {

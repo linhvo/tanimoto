@@ -13,12 +13,12 @@ import (
 
 // Tanimoto represents a plugin that will find the common bits of the top-n list.
 type TanimotoPlugin struct {
-	holder *pilosa.Holder
+	executor *pilosa.Executor
 }
 
-// NewDiffTopPlugin returns a new instance of DiffTopPlugin.
-func NewTanimotoPlugin(h *pilosa.Executor) pilosa.Plugin {
-	return &TanimotoPlugin{h.Holder}
+// NewTanimotoPlugin returns a new instance of DiffTopPlugin.
+func NewTanimotoPlugin(e *pilosa.Executor) pilosa.Plugin {
+	return &TanimotoPlugin{e}
 }
 
 // Map executes the plugin against a single slice.
@@ -42,10 +42,13 @@ func (p *TanimotoPlugin) Map(ctx context.Context, index string, call *pql.Call, 
 		return nil, errors.New("threshold required")
 	}
 
-	var bm *pilosa.Bitmap
+	bm, err := p.executor.ExecuteCallSlice(ctx, index, call.Children[0], slice, p)
+	if err != nil {
+		return nil, err
+	}
 
-	frag := p.holder.Fragment(index, frame, pilosa.ViewStandard, slice)
-	opt := pilosa.TopOptions{TanimotoThreshold: threshold, Src: bm}
+	frag := p.executor.Holder.Fragment(index, frame, pilosa.ViewStandard, slice)
+	opt := pilosa.TopOptions{TanimotoThreshold: threshold, Src: bm.(*pilosa.Bitmap)}
 
 	pairs := frag.Cache().Top()
 	var tanimotoThreshold uint64
